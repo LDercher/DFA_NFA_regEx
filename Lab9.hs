@@ -4,6 +4,7 @@ import Data.Array
 import Data.List
 import qualified Data.Map as Map
 import Data.Maybe
+import Data.oldList
 
 {-------------------------------------------------------------------------------
 
@@ -56,7 +57,20 @@ addTransition start symbol end dfa =
     dfa{ dfaTransitions = dfaTransitions dfa // [((start, symbol), end)] }
 
 accepts :: DFA -> String -> Bool
-accepts = error "unimplemented"
+accepts _ [] =  False
+accepts d (s:ss) = if (((dfaTransitions d ! ((length ss),s)) == -1))
+                                     then False
+                                        else if (elem (dfaTransitions d ! ((length ss),s)) (getDFAfinalStates d))
+                                            then True
+                                                else False
+
+
+getDFAfinalStates :: DFA -> [Int]
+getDFAfinalStates (DFA { dfaFinal = l}) = l
+                            -- if string transitions to dfa final int list return true
+
+char2state :: Int -> DFA -> Char -> Bool
+char2state i dfa c = if (dfaTransitions dfa ! (i,c) == -1) then False else True
 
 longest :: DFA -> String -> (String, String)
 longest = error "extra credit"
@@ -91,7 +105,27 @@ epsClose nfa s = iter [s]
               where ts = nub ([t | (s, Nothing, t) <- nfaTransitions nfa, s `elem` ss] ++ ss)
 
 nfaAccepts :: NFA -> String -> Bool
-nfaAccepts = error "unimplemented"
+nfaAccepts n [] = False 
+nfaAccepts n (s:ss) = isFinalStateInList (map (lookupTransitions (Just s)) (epsClose n (getNFAStart n))) (getFinalStates n) || (nfaAccepts n ss)
+
+getNFAStart :: NFA -> Int
+getNFAStart (NFA {nfaStart = s}) = s 
+
+isFinalStateInList :: [a] -> [a] -> Bool
+isFinalStateInList cs fs = hasDuplicates (cs ++ fs)
+
+hasDuplicates :: [a] -> Bool
+hasDuplicates ts = maximum (map length (group . sort ts)) > 1
+
+getNFATransitions :: NFA -> [(Int, Maybe Char, Int)]
+getNFATransitions (NFA {nfaTransitions = t}) = t
+
+getFinalStates :: NFA -> [Int]
+getFinalStates (NFA {nfaFinal = n}) = n
+
+lookupTransitions :: Maybe Char -> Int -> [(Int, Maybe Char, Int)] -> Int
+lookupTransitions inpChar curState ((cs, ic, ns):rest) = if (curState == cs && (inpChar == ic || ic == Nothing)) then ns else lookupTransitions inpChar curState rest
+
 
 
 {-------------------------------------------------------------------------------
