@@ -4,7 +4,7 @@ import Data.Array
 import Data.List
 import qualified Data.Map as Map
 import Data.Maybe
-import Data.oldList
+
 
 {-------------------------------------------------------------------------------
 
@@ -106,16 +106,23 @@ epsClose nfa s = iter [s]
 
 nfaAccepts :: NFA -> String -> Bool
 nfaAccepts n [] = False 
-nfaAccepts n (s:ss) = isFinalStateInList (map (lookupTransitions (Just s)) (epsClose n (getNFAStart n))) (getFinalStates n) || (nfaAccepts n ss)
+nfaAccepts n (s:ss) = if ((nub (((checkTransitions n (epsClose n (getNFAStart n)) s) ++ getFinalStates n))) == ((checkTransitions n (epsClose n (getNFAStart n)) s) ++ getFinalStates n)) then nfaAccepts n ss else False
+
+
+checkTransitions :: NFA -> [Int] -> Char -> [Int]
+checkTransitions NFA { nfaTransitions = tlist} is c = (lookupPairInTriple (intChartuples is c) tlist)
+
+intChartuples :: [Int] -> Char -> [(Int, Char)]
+intChartuples (i:is) c = [(i,c)] ++ intChartuples is c
+
+lookupPairInTriple :: (Eq a) => (Eq b) => [(a,b)] -> [(a,Maybe b,a)] -> [a]
+lookupPairInTriple ((i,s):restp) ((i1,s2,i2):restt) = if ((i == i1) && (s == fromJust s2)) then [i2] ++ lookupPairInTriple restp restt else lookupPairInTriple restp restt
 
 getNFAStart :: NFA -> Int
 getNFAStart (NFA {nfaStart = s}) = s 
 
-isFinalStateInList :: [a] -> [a] -> Bool
-isFinalStateInList cs fs = hasDuplicates (cs ++ fs)
-
-hasDuplicates :: [a] -> Bool
-hasDuplicates ts = maximum (map length (group . sort ts)) > 1
+isFinalStateInList :: Ord a => [a] -> [a] -> Bool
+isFinalStateInList cs fs = if ((nub (cs ++ fs)) == (cs ++ fs)) then True else False
 
 getNFATransitions :: NFA -> [(Int, Maybe Char, Int)]
 getNFATransitions (NFA {nfaTransitions = t}) = t
@@ -206,7 +213,20 @@ infixl 5 `Seq`
 infixl 4 `Or`
 
 compile :: RegEx -> Int -> (NFA, Int)
-compile = error "unimplemented"
+compile (Eps) n = (NFA { nfaStart = n, nfaTransitions = [(n, Nothing, n+1)], nfaFinal = [n+1] }, n+2)--(NFA n [] [n], n+1)
+compile (Exact a) n = (NFA { nfaStart = n, nfaTransitions = [(n, Just a, n+1)], nfaFinal = [n+1] }, n+2)--(NFA n [(n, Just a, n+1)] [n+1], n+2)
+compile (Wild) n = (NFA {nfaStart = n, nfaTransitions = [(n, Just 'A', n + 1),(n, Just 'B', n+1),(n, Just 'C', n + 1),(n, Just 'D', n+1),(n, Just 'E', n + 1),(n, Just 'F', n+1),(n, Just 'G', n + 1),(n, Just 'H', n+1),(n, Just 'I', n + 1),(n, Just 'J', n+1),(n, Just 'K', n + 1),(n, Just 'L', n+1),(n, Just 'M', n + 1),(n, Just 'N', n+1),(n, Just 'O', n + 1),(n, Just 'P', n+1),(n, Just 'Q', n + 1),(n, Just 'R', n+1),(n, Just 'S', n + 1),(n, Just 'T', n+1),(n, Just 'U', n + 1),(n, Just 'V', n+1),(n, Just 'W', n + 1),(n, Just 'X', n+1),(n, Just 'Y', n+1),(n, Just 'Z', n+1)], nfaFinal = [n+1]}, n+2)
+compile (Seq r1 r2) n = (NFA { nfaStart = n, nfaTransitions = ((getNFATransitions(fst(compile r1 n))) ++  getNFATransitions(fst(compile r2 n))), nfaFinal = getFinalStates(fst(compile r2 n))}, n+2)
+compile (Or r1 r2) n = (NFA { nfaStart = n, nfaTransitions =  [(n, Nothing , getFirstofTriplet((head ( getNFATransitions (fst(compile r1 n))))))] ++ [(n, Nothing , getFirstofTriplet((head ( getNFATransitions (fst(compile r2 n))))))] ++ ((getNFATransitions(fst(compile r1 n))) ++  getNFATransitions(fst(compile r2 n))), nfaFinal =[n+1] }, n+2)
+compile (Star r) n = (NFA { nfaStart = n, nfaTransitions = (getNFATransitions(fst(compile r n))) ++ [((getLastofTriplet((last ( getNFATransitions (fst(compile r n)))))), Nothing , (getNFAStart(fst(compile r n))))], nfaFinal = [n+1] }, n+2)
+
+
+getFirstofTriplet :: (a,b,c) -> a
+getFirstofTriplet (a,_,_) = a
+
+getLastofTriplet :: (a,b,c) -> a
+getLastofTriplet (_,_,c) = c
+
 
 compile' :: RegEx -> NFA
 compile' = fst . flip compile 0
