@@ -57,20 +57,18 @@ addTransition start symbol end dfa =
     dfa{ dfaTransitions = dfaTransitions dfa // [((start, symbol), end)] }
 
 accepts :: DFA -> String -> Bool
-accepts _ [] =  False
-accepts d (s:ss) = if (((dfaTransitions d ! ((length ss),s)) == -1))
-                                     then False
-                                        else if (elem (dfaTransitions d ! ((length ss),s)) (getDFAfinalStates d))
-                                            then True
-                                                else False
-
+accepts d (s:ss) =  checkIfinFinal (concatMap (intcharIndfaTransitions d (head(intcharIndfaTransitions d (getDFAStart d) s)) ) ss) (getDFAfinalStates d)--trying to concatMap dfaTransitions on ss's to get all states. Not sure if that's possible. 
+                                                                                                   -- I will next check if that list is in in the dfaFinal 
+intcharIndfaTransitions :: DFA -> Int -> Char -> [Int]
+intcharIndfaTransitions d i c = [dfaTransitions d ! (i,c)]
 
 getDFAfinalStates :: DFA -> [Int]
-getDFAfinalStates (DFA { dfaFinal = l}) = l
-                            -- if string transitions to dfa final int list return true
+getDFAfinalStates (DFA{ dfaFinal = n}) = n
 
-char2state :: Int -> DFA -> Char -> Bool
-char2state i dfa c = if (dfaTransitions dfa ! (i,c) == -1) then False else True
+
+getDFAStart :: DFA -> Int
+getDFAStart (DFA{ dfaStart = s }) = s                    
+
 
 longest :: DFA -> String -> (String, String)
 longest = error "extra credit"
@@ -110,14 +108,21 @@ nfaAccepts n (s:ss) = checkIfinFinal (concatMap (checkTransitions n (checkTransi
 checkIfinFinal :: [Int] -> [Int] -> Bool
 checkIfinFinal l1 l2 = if (nub(l1 ++ l2) == (l1 ++ l2)) then True else False
 
+getFinalStates :: NFA -> [Int]
+getFinalStates (NFA {nfaFinal = n}) = n
+
 checkTransitions :: NFA -> [Int] -> Char -> [Int]
 checkTransitions NFA { nfaTransitions = tlist} is c = (lookupPairInTriple (intChartuples is c) tlist)
+
+{--
+
+THESE FUNCTIONS ARE LEFT HERE AS A MEMORY TO MY MANY ATTEMPTS AT THIS PROBLEM. THEY ARE NOW BANISHED TO THE DEAD ZONE!!!
 
 intChartuples :: [Int] -> Char -> [(Int, Char)]
 intChartuples (i:is) c = [(i,c)] ++ intChartuples is c
 
 lookupPairInTriple :: (Eq a) => (Eq b) => [(a,b)] -> [(a,Maybe b,a)] -> [a]
-lookupPairInTriple ((i,s):restp) ((i1,s2,i2):restt) = if ((i == i1) && (s == fromJust s2)) then [i2] ++ lookupPairInTriple restp restt else lookupPairInTriple restp restt
+lookupPairInTriple ((i,s):restp) ((i1,s2,i2):rest) = if ((i == i1) && (s == fromJust s2)) then [i2] ++ lookupPairInTriple restp rest else lookupPairInTriple restp rest
 
 getNFAStart :: NFA -> Int
 getNFAStart (NFA {nfaStart = s}) = s 
@@ -128,12 +133,11 @@ isFinalStateInList cs fs = if ((nub (cs ++ fs)) == (cs ++ fs)) then True else Fa
 getNFATransitions :: NFA -> [(Int, Maybe Char, Int)]
 getNFATransitions (NFA {nfaTransitions = t}) = t
 
-getFinalStates :: NFA -> [Int]
-getFinalStates (NFA {nfaFinal = n}) = n
-
 lookupTransitions :: Maybe Char -> Int -> [(Int, Maybe Char, Int)] -> Int
 lookupTransitions inpChar curState ((cs, ic, ns):rest) = if (curState == cs && (inpChar == ic || ic == Nothing)) then ns else lookupTransitions inpChar curState rest
 
+
+--}
 
 
 {-------------------------------------------------------------------------------
