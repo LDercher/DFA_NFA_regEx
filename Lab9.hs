@@ -56,9 +56,14 @@ addTransition :: Int -> Char -> Int -> DFA -> DFA
 addTransition start symbol end dfa =
     dfa{ dfaTransitions = dfaTransitions dfa // [((start, symbol), end)] }
 
-accepts :: DFA -> String -> Bool
-accepts d (s:ss) =  checkIfinFinal (concatMap (intcharIndfaTransitions d (head(intcharIndfaTransitions d (getDFAStart d) s)) ) ss) (getDFAfinalStates d)--trying to concatMap dfaTransitions on ss's to get all states. Not sure if that's possible. 
-                                                                                                   -- I will next check if that list is in in the dfaFinal 
+accepts :: DFA -> String -> Int
+accepts d s =  (foldl (getNextState d (dfaStart d)) s)
+
+-- function to flod will take start state, the char, and return next state
+getNextState:: DFA -> Int -> Char -> Int
+getNextState dfa sstate inpchar = dfaTransitions dfa ! (sstate,inpchar)
+
+    -- I will next check if that list is in in the dfaFinal 
 intcharIndfaTransitions :: DFA -> Int -> Char -> [Int]
 intcharIndfaTransitions d i c = [dfaTransitions d ! (i,c)]
 
@@ -114,10 +119,6 @@ getFinalStates (NFA {nfaFinal = n}) = n
 checkTransitions :: NFA -> [Int] -> Char -> [Int]
 checkTransitions NFA { nfaTransitions = tlist} is c = (lookupPairInTriple (intChartuples is c) tlist)
 
-{--
-
-THESE FUNCTIONS ARE LEFT HERE AS A MEMORY TO MY MANY ATTEMPTS AT THIS PROBLEM. THEY ARE NOW BANISHED TO THE DEAD ZONE!!!
-
 intChartuples :: [Int] -> Char -> [(Int, Char)]
 intChartuples (i:is) c = [(i,c)] ++ intChartuples is c
 
@@ -136,8 +137,6 @@ getNFATransitions (NFA {nfaTransitions = t}) = t
 lookupTransitions :: Maybe Char -> Int -> [(Int, Maybe Char, Int)] -> Int
 lookupTransitions inpChar curState ((cs, ic, ns):rest) = if (curState == cs && (inpChar == ic || ic == Nothing)) then ns else lookupTransitions inpChar curState rest
 
-
---}
 
 
 {-------------------------------------------------------------------------------
@@ -218,19 +217,25 @@ infixl 5 `Seq`
 infixl 4 `Or`
 
 compile :: RegEx -> Int -> (NFA, Int)
-compile (Eps) n = (NFA { nfaStart = n, nfaTransitions = [(n, Nothing, n+1)], nfaFinal = [n+1] }, n+2)--(NFA n [] [n], n+1)
-compile (Exact a) n = (NFA { nfaStart = n, nfaTransitions = [(n, Just a, n+1)], nfaFinal = [n+1] }, n+2)--(NFA n [(n, Just a, n+1)] [n+1], n+2)
+compile (Eps) n = (NFA { nfaStart = n, nfaTransitions = [], nfaFinal = [n] }, n+1)
+compile (Exact a) n = (NFA { nfaStart = n, nfaTransitions = [(n, Just a, n+1)], nfaFinal = [n+1] }, n+2)
 compile (Wild) n = (NFA {nfaStart = n, nfaTransitions = [(n, Just 'A', n + 1),(n, Just 'B', n+1),(n, Just 'C', n + 1),(n, Just 'D', n+1),(n, Just 'E', n + 1),(n, Just 'F', n+1),(n, Just 'G', n + 1),(n, Just 'H', n+1),(n, Just 'I', n + 1),(n, Just 'J', n+1),(n, Just 'K', n + 1),(n, Just 'L', n+1),(n, Just 'M', n + 1),(n, Just 'N', n+1),(n, Just 'O', n + 1),(n, Just 'P', n+1),(n, Just 'Q', n + 1),(n, Just 'R', n+1),(n, Just 'S', n + 1),(n, Just 'T', n+1),(n, Just 'U', n + 1),(n, Just 'V', n+1),(n, Just 'W', n + 1),(n, Just 'X', n+1),(n, Just 'Y', n+1),(n, Just 'Z', n+1)], nfaFinal = [n+1]}, n+2)
-compile (Seq r1 r2) n = (NFA { nfaStart = n, nfaTransitions = ((getNFATransitions(fst(compile r1 n))) ++  getNFATransitions(fst(compile r2 n))), nfaFinal = getFinalStates(fst(compile r2 n))}, n+2)
-compile (Or r1 r2) n = (NFA { nfaStart = n, nfaTransitions =  [(n, Nothing , getFirstofTriplet((head ( getNFATransitions (fst(compile r1 n))))))] ++ [(n, Nothing , getFirstofTriplet((head ( getNFATransitions (fst(compile r2 n))))))] ++ ((getNFATransitions(fst(compile r1 n))) ++  getNFATransitions(fst(compile r2 n))), nfaFinal =[n+1] }, n+2)
-compile (Star r) n = (NFA { nfaStart = n, nfaTransitions = (getNFATransitions(fst(compile r n))) ++ [((getLastofTriplet((last ( getNFATransitions (fst(compile r n)))))), Nothing , (getNFAStart(fst(compile r n))))], nfaFinal = [n+1] }, n+2)
+compile (Seq r1 r2) n = (NFA { nfaStart = (nfaStart nfal), nfaTransitions = (map (epsTransition (nfaStart nfal)) (nfaFinal nfar)) , nfaFinal = nfaFinal nfar}, n2)
+                        where  (nfal, n1) = compile r1 n
+                               (nfar, n2) = compile r2 n1
+compile (Or r1 r2) n = (NFA { nfaStart = n2, nfaTransitions = [(n2, Nothing, nfaStart nfal),(n2, Nothing, nfaStart nfar)] ++ nfaTransitions nfal ++ nfaTransitions nfar, nfaFinal = nfaFinal nfal ++ nfaFinal nfar}, n2 +1)
+                          where  (nfal, n1) = compile r1 n
+                                 (nfar, n2) = compile r2 n1
+compile (Star r) n = (NFA { nfaStart = nfaStart nfa, nfaTransitions = (map (epsTransition (nfaStart nfa)) (nfaFinal nfa)) ++ nfaTransitions nfa , nfaFinal = [n+1] }, n+2)
+        where (nfa, n2) = compile r n
+
+
+epsTransition :: Int -> Int -> (Int, Maybe Char, Int)
+epsTransition l r = (r, Nothing, l)
 
 
 getFirstofTriplet :: (a,b,c) -> a
 getFirstofTriplet (a,_,_) = a
-
-getLastofTriplet :: (a,b,c) -> a
-getLastofTriplet (_,_,c) = c
 
 
 compile' :: RegEx -> NFA
