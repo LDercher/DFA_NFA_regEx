@@ -104,10 +104,11 @@ epsClose nfa s = iter [s]
               | otherwise = iter ts
               where ts = nub ([t | (s, Nothing, t) <- nfaTransitions nfa, s `elem` ss] ++ ss)
 
-nfaAccepts :: NFA -> String -> Bool
-nfaAccepts n [] = False 
-nfaAccepts n (s:ss) = if ((nub (((checkTransitions n (epsClose n (getNFAStart n)) s) ++ getFinalStates n))) == ((checkTransitions n (epsClose n (getNFAStart n)) s) ++ getFinalStates n)) then nfaAccepts n ss else False
+nfaAccepts :: NFA -> String -> Bool 
+nfaAccepts n (s:ss) = checkIfinFinal (concatMap (checkTransitions n (checkTransitions n (epsClose n (getNFAStart n)) s)) ss) (getFinalStates n)
 
+checkIfinFinal :: [Int] -> [Int] -> Bool
+checkIfinFinal l1 l2 = if (nub(l1 ++ l2) == (l1 ++ l2)) then True else False
 
 checkTransitions :: NFA -> [Int] -> Char -> [Int]
 checkTransitions NFA { nfaTransitions = tlist} is c = (lookupPairInTriple (intChartuples is c) tlist)
