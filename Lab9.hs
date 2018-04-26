@@ -56,8 +56,8 @@ addTransition :: Int -> Char -> Int -> DFA -> DFA
 addTransition start symbol end dfa =
     dfa{ dfaTransitions = dfaTransitions dfa // [((start, symbol), end)] }
 
-accepts :: DFA -> String -> Int
-accepts d s =  (foldl (getNextState d (dfaStart d)) s)
+accepts :: DFA -> String -> Bool
+accepts d s =  (elem (foldl (getNextState d)(dfaStart d) s) (dfaFinal d))
 
 -- function to flod will take start state, the char, and return next state
 getNextState:: DFA -> Int -> Char -> Int
@@ -108,7 +108,14 @@ epsClose nfa s = iter [s]
               where ts = nub ([t | (s, Nothing, t) <- nfaTransitions nfa, s `elem` ss] ++ ss)
 
 nfaAccepts :: NFA -> String -> Bool 
-nfaAccepts n (s:ss) = checkIfinFinal (concatMap (checkTransitions n (checkTransitions n (epsClose n (getNFAStart n)) s)) ss) (getFinalStates n)
+nfaAccepts n s = checkIfinFinal (foldl (transition n) ([(nfaStart n)]) s) (nfaFinal n)
+    
+    
+ --   checkIfinFinal (concatMap (checkTransitions n (checkTransitions n (epsClose n (getNFAStart n)) s)) ss) (getFinalStates n)
+
+--foldl function that takes char [Int] and returns [Int]
+transition:: NFA -> [Int] -> Char -> [Int]
+transition n st c = lookupPairInTriple (intChartuples st c) (nfaTransitions n)
 
 checkIfinFinal :: [Int] -> [Int] -> Bool
 checkIfinFinal l1 l2 = if (nub(l1 ++ l2) == (l1 ++ l2)) then True else False
