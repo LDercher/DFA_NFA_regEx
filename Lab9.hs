@@ -1,3 +1,13 @@
+{--
+
+author: Luke Dercher
+student_id: l446d901
+class: EECS 665
+
+--}
+
+
+
 module Lab9 where
 
 import Data.Array
@@ -74,11 +84,12 @@ getDFAfinalStates (DFA{ dfaFinal = n}) = n
 getDFAStart :: DFA -> Int
 getDFAStart (DFA{ dfaStart = s }) = s                    
 
-
+-- based on break function from prelude
 longest :: DFA -> String -> (String, String)
-longest d (s:ss) = error "i"--(accepted, notaccepted)
-           -- where accepted = if (accepts [s]) then (accepted ++ s) else (longest ss)
-             --     notaccepted = ss
+longest d xs@[] = (xs,xs)
+longest d xs@(x:xs')
+            | accepts d [x] = (xs,[])
+            | otherwise = let (ys,zs) = longest d xs' in (zs,x:ys)
 
 
 {-------------------------------------------------------------------------------
